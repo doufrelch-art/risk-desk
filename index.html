@@ -235,7 +235,7 @@ tr.click{cursor:pointer}tr.click:hover td{background:rgba(96,165,250,.06)}
 
       <div class="card">
         <h2><span class="step">STEP 2</span>포지션 사이징 결과</h2>
-        <div class="main-result"><div style="color:var(--mute);font-size:.88rem">적정 매수 수량</div><div class="v" id="rShares">-</div><div class="s">이 수량 이하로 매수하세요</div></div>
+        <div class="main-result"><div style="color:var(--mute);font-size:.88rem">적정 매수 수량</div><div class="v" id="rShares">-</div><div class="s">이 수량 이하로 매수하세요</div><div class="hint" id="rBasis"></div></div>
         <div class="grid2">
           <div class="si"><div class="l">주당 위험</div><div class="v" id="rRPS">-</div></div>
           <div class="si"><div class="l">손절률</div><div class="v" id="rSLP">-</div></div>
@@ -437,7 +437,7 @@ function setUnits(root,cur){document.querySelectorAll(root+' .u').forEach(u=>{if
 function fillAccSelects(){const o=accOptions();['cAccount','mAccount'].forEach(id=>{const v=$(id).value;$(id).innerHTML=o;if(acc(v))$(id).value=v;});
   const fv=$('fAccount').value;$('fAccount').innerHTML='<option value="">계좌 전체</option>'+o;$('fAccount').value=fv;onAccChange('c');}
 function curOf(pf){return accCur($(pf+'Account').value);}
-function onAccChange(pf){const cu=curOf(pf);setUnits(pf==='c'?'#calculator':'#tModal',cu);const a=acc($(pf+'Account').value);
+function onAccChange(pf){if(pf==='c'){['cActEntry','cActShares','cSlip'].forEach(id=>$(id).value='');}const cu=curOf(pf);setUnits(pf==='c'?'#calculator':'#tModal',cu);const a=acc($(pf+'Account').value);
   if(pf==='c')$('cAccHint').textContent=a?`${a.name} · 원금 ${money(a.initial||0,false,a.cur)}`:'설정에서 계좌를 등록하세요';
   linkRisk(pf,'basis');if(pf==='c'){if(num('cEntry')&&num('cStop')&&num('cRisk'))calc();else renderTargets(null);}else modalCalc();}
 function linkStop(pf,edited){const e=num(pf+'Entry');const cu=curOf(pf);if(!e||e<=0)return;
@@ -511,8 +511,9 @@ function calc(){
   if(!stop||stop<=0)return cErr('올바른 손절가격을 입력해주세요.');
   if(stop>=entry)return cErr('롱 포지션 기준 손절가는 진입가보다 낮아야 합니다.');
   if(!risk||risk<=0)return cErr('1R은 0보다 큰 금액을 입력해주세요.');
-  const c=coreCalc(entry,stop,risk,num('cActEntry'));const cu=curOf('c');c.cur=cu;
-  $('rShares').textContent=c.shares.toLocaleString()+'주';
+  const ae=num('cActEntry');if(ae!=null&&ae<=stop)return cErr(`고급 설정의 실제 체결가(${money(ae,false,curOf('c'))})가 손절가보다 낮습니다. 이전 거래 값이 남아 있다면 지워주세요.`);
+  const c=coreCalc(entry,stop,risk,ae);const cu=curOf('c');c.cur=cu;
+  $('rShares').textContent=c.shares.toLocaleString()+'주';$('rBasis').textContent=ae!=null?`실제 체결가 ${money(ae,false,cu)} 기준으로 재계산됨`:'';
   $('rRPS').textContent=money(c.rps,false,cu);$('rSLP').textContent=pct(c.slp);$('rTotal').textContent=money(c.shares*c.e,false,cu);
   const maxSL=num('cMaxSL')||8.2;const maxEntry=stop/(1-maxSL/100);
   $('rMaxEntry').textContent=money(maxEntry,false,cu);
@@ -544,7 +545,7 @@ $('mClose').addEventListener('click',closeModal);$('tModal').addEventListener('c
 $('mStatus').addEventListener('change',statusToggle);$('mMemo').addEventListener('input',()=>$('mMemoN').textContent=$('mMemo').value.length);$('mSetup').addEventListener('input',()=>$('mSetupN').textContent=$('mSetup').value.length);
 function statusToggle(){const closed=$('mStatus').value==='closed';$('mCloseWrap').classList.toggle('hidden',!closed);$('mPnlWrap').classList.toggle('hidden',!closed);if(closed&&!$('mCloseDate').value)$('mCloseDate').value=today();}
 function modalCalc(){const e=num('mEntry'),s=num('mStop'),r=num('mRisk');const p=num('mPnl');
-  if(e&&s&&r&&s<e){const c=coreCalc(e,s,r,num('mActEntry'));$('mCalc').innerHTML=`적정 수량 <b>${c.shares}주</b> · 손절률 <b>${c.slp.toFixed(2)}%</b> · 주당 위험 <b>${money(c.rps,false,curOf('m'))}</b>`;}
+  if(e&&s&&r&&s<e&&!(num('mActEntry')!=null&&num('mActEntry')<=s)){const c=coreCalc(e,s,r,num('mActEntry'));$('mCalc').innerHTML=`적정 수량 <b>${c.shares}주</b> · 손절률 <b>${c.slp.toFixed(2)}%</b> · 주당 위험 <b>${money(c.rps,false,curOf('m'))}</b>`;}
   else $('mCalc').innerHTML='적정 수량 <b>-</b> · 손절률 <b>-</b>';
   $('mRHint').textContent='R 배수: '+(p!=null&&r?(p/r).toFixed(2)+'R':'-');}
 $('mImg').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=ev=>{const im=new Image();im.onload=()=>{const M=900;let w=im.width,h=im.height;if(w>M){h=h*M/w;w=M;}const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(im,0,0,w,h);S.img=cv.toDataURL('image/jpeg',.72);showImgPrev();};im.src=ev.target.result;};rd.readAsDataURL(f);});
@@ -553,7 +554,8 @@ $('mSave').addEventListener('click',()=>{
   const e=num('mEntry'),s=num('mStop'),r=num('mRisk');
   if(!e||e<=0||!s||s<=0||!r||r<=0)return alert('진입가, 손절가, 1R을 모두 입력해주세요.');
   if(s>=e)return alert('손절가는 진입가보다 낮아야 합니다.');
-  const c=coreCalc(e,s,r,num('mActEntry'));const status=$('mStatus').value;const shares=num('mShares');
+  const mae=num('mActEntry');if(mae!=null&&mae<=s)return alert('실제 체결가가 손절가보다 낮습니다. 값을 확인해주세요.');
+  const c=coreCalc(e,s,r,mae);const status=$('mStatus').value;const shares=num('mShares');
   const t={id:S.editId||Date.now(),date:$('mDate').value||today(),account:$('mAccount').value,cur:curOf('m'),riskPct:num('mRiskPct'),riskBasis:$('mRiskBasis').value,posAmount:num('mPosAmt'),ticker:($('mTicker').value||'N/A').toUpperCase().trim(),strategy:$('mStrategy').value.trim()||'미분류',setup:$('mSetup').value.trim(),
     entryPrice:e,actualEntry:num('mActEntry'),stopPrice:s,riskAmount:r,riskPerShare:c.rps,stopPercent:c.slp,recommendedShares:c.shares,actualShares:shares,
     compliant:shares==null?null:shares<=c.shares,status,closeDate:status==='closed'?($('mCloseDate').value||today()):null,
