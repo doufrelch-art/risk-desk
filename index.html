@@ -137,7 +137,7 @@ tr.click{cursor:pointer}tr.click:hover td{background:rgba(96,165,250,.06)}
   <div id="dashboard" class="content active">
     <div id="guardDash"></div>
     <div class="scope">
-      <select id="scopeType"><option value="all">전체 거래</option><option value="market">시장별</option><option value="ticker">종목별</option><option value="strategy">전략별</option></select>
+      <select id="scopeType"><option value="all">전체 거래</option><option value="account">계좌별</option><option value="market">시장별</option><option value="ticker">종목별</option><option value="strategy">전략별</option></select>
       <select id="scopeValue" class="hidden"></select>
       <span class="n" id="scopeInfo"></span>
     </div>
@@ -148,6 +148,7 @@ tr.click{cursor:pointer}tr.click:hover td{background:rgba(96,165,250,.06)}
       <div class="si"><div class="l">수익률</div><div class="v" id="dRet">-</div></div>
     </div>
     <div class="hint" style="margin:-10px 0 16px" id="fxInfo"></div>
+    <div class="card"><h2>계좌별 현황 <span style="font-size:.8rem;color:var(--mute);font-weight:400">각 계좌 통화 기준 · 완료 거래 실현손익</span></h2><div class="tbl-wrap" id="accStatus"></div></div>
 
     <div class="card"><h2>성과 지표</h2>
       <div class="stats">
@@ -196,10 +197,22 @@ tr.click{cursor:pointer}tr.click:hover td{background:rgba(96,165,250,.06)}
       <div class="card">
         <h2><span class="step">STEP 1</span>거래 조건 입력</h2>
         <div id="cErr" class="err"></div>
-        <div class="fg"><label>시장</label><select id="cMarket"><option value="USD">미국 주식 ($)</option><option value="KRW">한국 주식 (₩)</option></select></div>
+        <div class="fg"><label>계좌</label><select id="cAccount"></select><div class="hint" id="cAccHint"></div></div>
         <div class="fg"><label>내가 살 가격</label><div class="iu"><input type="number" id="cEntry" placeholder="예: 100" step="0.01"><span class="u">$</span></div></div>
-        <div class="fg"><label>차트상 손절가</label><div class="iu"><input type="number" id="cStop" placeholder="예: 96.50" step="0.01"><span class="u">$</span></div><div class="hint">차트 구조가 결정한 손절가. 수량을 맞추려고 올리지 않습니다.</div></div>
-        <div class="fg"><label>이번 거래 최대 손실 (1R)</label><div class="iu"><input type="number" id="cRisk" placeholder="예: 1000" step="0.01"><span class="u">$</span></div></div>
+        <div class="row">
+          <div class="fg"><label>차트상 손절가</label><div class="iu"><input type="number" id="cStop" placeholder="예: 96.50" step="0.01"><span class="u">$</span></div></div>
+          <div class="fg"><label>손절률</label><div class="iu"><input type="number" id="cStopPct" placeholder="예: 3.5" step="0.01"><span class="u">%</span></div></div>
+        </div>
+        <div class="hint" style="margin:-8px 0 12px">둘 중 하나만 입력하면 나머지는 자동 계산. 손절가는 차트 구조가 결정하며, 수량을 맞추려고 올리지 않습니다.</div>
+        <div class="row">
+          <div class="fg"><label>최대 손실 1R (금액)</label><div class="iu"><input type="number" id="cRisk" placeholder="예: 1000" step="0.01"><span class="u">$</span></div></div>
+          <div class="fg"><label>최대 손실 1R (%)</label><div class="iu"><input type="number" id="cRiskPct" placeholder="예: 1" step="0.01"><span class="u">%</span></div></div>
+        </div>
+        <div class="row">
+          <div class="fg"><label>% 기준</label><select id="cRiskBasis"><option value="acct">계좌 원금 대비</option><option value="pos">매수금액 대비</option></select></div>
+          <div class="fg" id="cPosWrap"><label>예정 매수금액</label><div class="iu"><input type="number" id="cPosAmt" placeholder="예: 10000" step="0.01"><span class="u">$</span></div></div>
+        </div>
+        <div class="hint" style="margin:-8px 0 12px" id="cRiskHint">금액과 % 중 하나만 입력하면 나머지는 자동 계산됩니다.</div>
         <div class="row">
           <div class="fg"><label>티커</label><input type="text" id="cTicker" placeholder="NVDA / 삼성전자" maxlength="20"></div>
           <div class="fg"><label>전략</label><input type="text" id="cStrategy" list="stratList" placeholder="예: 돌파, 눌림목"></div>
@@ -245,7 +258,7 @@ tr.click{cursor:pointer}tr.click:hover td{background:rgba(96,165,250,.06)}
       <h2><span class="step">STEP 3</span>거래기록 <span class="n" id="tCount" style="font-size:.8rem;color:var(--mute)"></span></h2>
       <div class="filters">
         <input type="text" id="fSearch" placeholder="티커 / 메모 검색">
-        <select id="fMarket"><option value="">시장 전체</option><option value="USD">미국 ($)</option><option value="KRW">한국 (₩)</option></select>
+        <select id="fAccount"><option value="">계좌 전체</option></select>
         <select id="fStrategy"><option value="">전략 전체</option></select>
         <select id="fStatus"><option value="">상태 전체</option><option value="open">미결</option><option value="win">승리</option><option value="loss">패배</option></select>
         <input type="date" id="fFrom" title="시작일"><input type="date" id="fTo" title="종료일">
@@ -262,10 +275,13 @@ tr.click{cursor:pointer}tr.click:hover td{background:rgba(96,165,250,.06)}
 
   <!-- ===== SETTINGS ===== -->
   <div id="settings" class="content">
-    <div class="card"><h2>계정</h2>
+    <div class="card"><h2>계좌 <span style="font-size:.8rem;color:var(--mute);font-weight:400">이름·통화·원금 — 여러 개 등록 가능</span></h2>
+      <div class="tbl-wrap"><table id="accTbl"><tr><th>계좌 이름</th><th>통화</th><th>원금</th><th></th></tr></table></div>
+      <button class="bs bsm" id="accAdd" style="margin-top:8px">+ 계좌 추가</button>
+      <div class="hint" style="margin-top:6px">예: 키움 국내(₩), 토스 미국($), IBKR($). 아래 "설정 저장"을 눌러야 반영됩니다. 통화는 거래가 기록된 뒤에는 바꾸지 마세요.</div>
+    </div>
+    <div class="card"><h2>합산 · 목표</h2>
       <div class="row">
-        <div class="fg"><label>미국 계좌 원금</label><div class="iu"><input type="number" id="sInitUSD" step="0.01" placeholder="50000"><span class="u">$</span></div></div>
-        <div class="fg"><label>한국 계좌 원금</label><div class="iu"><input type="number" id="sInitKRW" step="1" placeholder="50000000"><span class="u">₩</span></div></div>
         <div class="fg"><label>대시보드 기준 통화</label><select id="sCur"><option value="KRW">KRW (₩) — 원화로 합산</option><option value="USD">USD ($) — 달러로 합산</option></select><div class="hint">전체 자산·손익·MDD 등 합산 지표를 표시할 통화</div></div>
         <div class="fg"><label>계좌 시작일</label><input type="date" id="sStart"><div class="hint">CAGR 계산 기준일. 비우면 첫 거래일 사용.</div></div>
         <div class="fg"><label>환율 (1 USD = ? KRW)</label><div style="display:flex;gap:8px"><div class="iu" style="flex:1"><input type="number" id="sFx" step="0.01" placeholder="1380"><span class="u">₩</span></div><button class="bs" id="sFxBtn" style="white-space:nowrap">당일 환율 조회</button></div><div class="hint" id="sFxInfo">페이지를 열 때마다 자동으로 당일 환율을 조회합니다. 실패하면 마지막 저장값을 사용합니다.</div></div>
@@ -331,21 +347,29 @@ tr.click{cursor:pointer}tr.click:hover td{background:rgba(96,165,250,.06)}
     <div class="mh" id="mTitle">거래 저장</div>
     <div class="row">
       <div class="fg"><label>진입일</label><input type="date" id="mDate"></div>
-      <div class="fg"><label>시장</label><select id="mCur"><option value="USD">미국 주식 ($)</option><option value="KRW">한국 주식 (₩)</option></select></div>
+      <div class="fg"><label>계좌</label><select id="mAccount"></select></div>
     </div>
     <div class="row">
       <div class="fg"><label>티커 / 종목명</label><input type="text" id="mTicker" maxlength="20" placeholder="NVDA / 삼성전자"></div>
       <div class="fg"><label>전략</label><input type="text" id="mStrategy" list="stratList" placeholder="돌파 / 눌림목 / ORB ..."></div>
     </div>
-    <div class="fg"><label>1R (최대 손실)</label><div class="iu"><input type="number" id="mRisk" step="0.01"><span class="u">$</span></div></div>
     <div class="row">
       <div class="fg"><label>예상 진입가</label><div class="iu"><input type="number" id="mEntry" step="0.01"><span class="u">$</span></div></div>
       <div class="fg"><label>실제 체결가</label><div class="iu"><input type="number" id="mActEntry" step="0.01" placeholder="비우면 예상가"><span class="u">$</span></div></div>
     </div>
     <div class="row">
       <div class="fg"><label>손절가</label><div class="iu"><input type="number" id="mStop" step="0.01"><span class="u">$</span></div></div>
-      <div class="fg"><label>실제 매수 수량</label><input type="number" id="mShares" step="1"></div>
+      <div class="fg"><label>손절률</label><div class="iu"><input type="number" id="mStopPct" step="0.01"><span class="u">%</span></div></div>
     </div>
+    <div class="row">
+      <div class="fg"><label>1R (금액)</label><div class="iu"><input type="number" id="mRisk" step="0.01"><span class="u">$</span></div></div>
+      <div class="fg"><label>1R (%)</label><div class="iu"><input type="number" id="mRiskPct" step="0.01"><span class="u">%</span></div></div>
+    </div>
+    <div class="row">
+      <div class="fg"><label>% 기준</label><select id="mRiskBasis"><option value="acct">계좌 원금 대비</option><option value="pos">매수금액 대비</option></select></div>
+      <div class="fg" id="mPosWrap"><label>예정 매수금액</label><div class="iu"><input type="number" id="mPosAmt" step="0.01"><span class="u">$</span></div></div>
+    </div>
+    <div class="fg"><label>실제 매수 수량</label><input type="number" id="mShares" step="1"></div>
     <div class="fg"><label>매매 근거 (셋업)</label><textarea id="mSetup" maxlength="1000" style="min-height:64px" placeholder="예: 50일선 상향 중 50일선까지 눌림, 전봉 고가 돌파 시 매수"></textarea><div class="hint"><span id="mSetupN">0</span> / 1000</div></div>
     <div class="calcbox" id="mCalc">적정 수량 <b>-</b> · 손절률 <b>-</b></div>
     <div class="row">
@@ -365,7 +389,7 @@ tr.click{cursor:pointer}tr.click:hover td{background:rgba(96,165,250,.06)}
 
 <script>
 // ---------- state ----------
-const DEF_SET={initialUSD:0,initialKRW:0,baseCur:'KRW',fxRate:1380,fxDate:'',startDate:'',monthlyTarget:0,dailyLossLimit:0,maxLossStreak:0};
+const DEF_SET={accounts:[],baseCur:'KRW',fxRate:1380,fxDate:'',startDate:'',monthlyTarget:0,dailyLossLimit:0,maxLossStreak:0};
 const S={trades:[],settings:{...DEF_SET},scopeType:'all',scopeValue:'',period:'month',editId:null,img:null};
 const CUR={USD:{s:'$',d:2},KRW:{s:'₩',d:0}};
 const MKT={USD:'미국 ($)',KRW:'한국 (₩)'};
@@ -374,7 +398,13 @@ const $=id=>document.getElementById(id);
 const num=id=>{const v=parseFloat($(id).value);return isNaN(v)?null:v;};
 const today=()=>new Date().toISOString().slice(0,10);
 function toBase(n,cur){if(n==null)return null;const b=S.settings.baseCur,r=S.settings.fxRate||1380;if(cur===b)return n;return cur==='USD'?n*r:n/r;}
-function initBase(){return toBase(S.settings.initialUSD||0,'USD')+toBase(S.settings.initialKRW||0,'KRW');}
+function accs(){return S.settings.accounts||[];}
+function acc(id){return accs().find(a=>a.id===id);}
+function accName(id){const a=acc(id);return a?a.name:'삭제된 계좌';}
+function accCur(id){const a=acc(id);return a?a.cur:'USD';}
+function initBase(){return accs().reduce((s,a)=>s+toBase(a.initial||0,a.cur),0);}
+function rnd(v,cur){return cur==='KRW'?Math.round(v):Math.round(v*100)/100;}
+function accOptions(){return accs().map(a=>`<option value="${a.id}">${esc(a.name)} (${CUR[a.cur].s})</option>`).join('');}
 function money(n,sign,cur){const c=CUR[cur||S.settings.baseCur]||CUR.KRW;if(n==null||isNaN(n))return '-';const a=Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:c.d,maximumFractionDigits:c.d});return (n<0?'-':(sign&&n>0?'+':''))+c.s+a;}
 const pct=(n,sign)=>n==null||isNaN(n)?'-':(sign&&n>0?'+':'')+n.toFixed(2)+'%';
 function esc(t){const d=document.createElement('div');d.textContent=t||'';return d.innerHTML;}
@@ -388,7 +418,11 @@ function load(){const raw=localStorage.getItem('riskDeskV3');if(raw){try{const o
   // migrate v3.0 → multi-currency
   if(S.settings.currency){const c=S.settings.currency==='KRW'?'KRW':'USD';S.settings.baseCur=c;if(S.settings.initialBalance){if(c==='KRW')S.settings.initialKRW=S.settings.initialBalance;else S.settings.initialUSD=S.settings.initialBalance;}delete S.settings.currency;delete S.settings.initialBalance;}
   S.trades.forEach(t=>{if(!t.cur)t.cur='USD';});
-  $('sInitUSD').value=S.settings.initialUSD||'';$('sInitKRW').value=S.settings.initialKRW||'';$('sStart').value=S.settings.startDate||'';$('sCur').value=S.settings.baseCur;$('sFx').value=S.settings.fxRate||'';fxLabel();
+  if(!Array.isArray(S.settings.accounts)){const A=[];if(S.settings.initialUSD||!S.settings.initialKRW)A.push({id:'a_usd',name:'미국 계좌',cur:'USD',initial:S.settings.initialUSD||0});if(S.settings.initialKRW)A.push({id:'a_krw',name:'한국 계좌',cur:'KRW',initial:S.settings.initialKRW});S.settings.accounts=A;delete S.settings.initialUSD;delete S.settings.initialKRW;}
+  if(!accs().length)S.settings.accounts=[{id:'a_usd',name:'미국 계좌',cur:'USD',initial:0},{id:'a_krw',name:'한국 계좌',cur:'KRW',initial:0}];
+  S.trades.forEach(t=>{if(!t.account||!acc(t.account)){const a=accs().find(x=>x.cur===t.cur)||accs()[0];t.account=a.id;}});
+  renderAccEditor();fillAccSelects();
+  $('sStart').value=S.settings.startDate||'';$('sCur').value=S.settings.baseCur;$('sFx').value=S.settings.fxRate||'';fxLabel();
   $('sTarget').value=S.settings.monthlyTarget||'';$('sDaily').value=S.settings.dailyLossLimit||'';$('sDailyU').textContent=CUR[S.settings.baseCur].s;$('sStreak').value=S.settings.maxLossStreak||'';updStorInfo();}
 function updStorInfo(){const b=(localStorage.getItem('riskDeskV3')||'').length;$('storInfo').textContent=`브라우저 저장 사용량: ${(b/1024).toFixed(0)} KB / 약 5,000 KB`+(b>4e6?' — 용량 부족 임박, 백업 권장':'');}
 
@@ -398,9 +432,30 @@ async function fetchFx(manual){try{const r=await fetch('https://open.er-api.com/
   catch(e){if(manual)alert('환율을 가져오지 못했습니다. 네트워크를 확인하거나 수동으로 입력하세요.');}}
 $('sFxBtn').addEventListener('click',()=>fetchFx(true));
 $('sCur').addEventListener('change',()=>$('sDailyU').textContent=CUR[$('sCur').value].s);
-function setUnits(root,cur){document.querySelectorAll(root+' .u').forEach(u=>u.textContent=CUR[cur].s);const st=cur==='KRW'?'1':'0.01';document.querySelectorAll(root+' input[type=number]').forEach(i=>{if(!['cActShares','cMaxSL','mShares'].includes(i.id))i.step=st;});}
-$('cMarket').addEventListener('change',()=>{setUnits('#calculator',$('cMarket').value);if(num('cEntry')&&num('cStop')&&num('cRisk'))calc();else renderTargets(null);});
-$('mCur').addEventListener('change',()=>{setUnits('#tModal',$('mCur').value);modalCalc();});
+function setUnits(root,cur){document.querySelectorAll(root+' .u').forEach(u=>{if(u.textContent!=='%')u.textContent=CUR[cur].s;});const st=cur==='KRW'?'1':'0.01';document.querySelectorAll(root+' input[type=number]').forEach(i=>{if(!['cActShares','cMaxSL','mShares','cStopPct','cRiskPct','mStopPct','mRiskPct'].includes(i.id))i.step=st;});}
+// ---------- account selects & linked inputs ----------
+function fillAccSelects(){const o=accOptions();['cAccount','mAccount'].forEach(id=>{const v=$(id).value;$(id).innerHTML=o;if(acc(v))$(id).value=v;});
+  const fv=$('fAccount').value;$('fAccount').innerHTML='<option value="">계좌 전체</option>'+o;$('fAccount').value=fv;onAccChange('c');}
+function curOf(pf){return accCur($(pf+'Account').value);}
+function onAccChange(pf){const cu=curOf(pf);setUnits(pf==='c'?'#calculator':'#tModal',cu);const a=acc($(pf+'Account').value);
+  if(pf==='c')$('cAccHint').textContent=a?`${a.name} · 원금 ${money(a.initial||0,false,a.cur)}`:'설정에서 계좌를 등록하세요';
+  linkRisk(pf,'basis');if(pf==='c'){if(num('cEntry')&&num('cStop')&&num('cRisk'))calc();else renderTargets(null);}else modalCalc();}
+function linkStop(pf,edited){const e=num(pf+'Entry');const cu=curOf(pf);if(!e||e<=0)return;
+  if(edited==='pct'){const p=num(pf+'StopPct');if(p!=null)$(pf+'Stop').value=rnd(e*(1-p/100),cu);}
+  else{const st=num(pf+'Stop');if(st!=null)$(pf+'StopPct').value=((e-st)/e*100).toFixed(2);else{const p=num(pf+'StopPct');if(p!=null)$(pf+'Stop').value=rnd(e*(1-p/100),cu);}}}
+function riskBasis(pf){const b=$(pf+'RiskBasis').value;$(pf+'PosWrap').classList.toggle('hidden',b!=='pos');if(b==='acct'){const a=acc($(pf+'Account').value);return a?(a.initial||0):0;}return num(pf+'PosAmt')||0;}
+const lastRisk={c:'amt',m:'amt'};
+function linkRisk(pf,edited){const B=riskBasis(pf);const cu=curOf(pf);const r=num(pf+'Risk'),p=num(pf+'RiskPct');
+  if(edited==='amt'||edited==='pct')lastRisk[pf]=edited;
+  const master=edited==='basis'?lastRisk[pf]:edited;
+  if(master==='amt'){if(r!=null&&B>0)$(pf+'RiskPct').value=(r/B*100).toFixed(2);else if(r==null&&p!=null&&B>0)$(pf+'Risk').value=rnd(B*p/100,cu);}
+  else{if(p!=null&&B>0)$(pf+'Risk').value=rnd(B*p/100,cu);else if(p==null&&r!=null&&B>0)$(pf+'RiskPct').value=(r/B*100).toFixed(2);}
+  if(pf==='c'){const b=$('cRiskBasis').value;$('cRiskHint').textContent=B>0?`기준 금액 ${money(B,false,cu)} (${b==='acct'?'계좌 원금':'예정 매수금액'}) · 금액↔% 자동 연동`:(b==='acct'?'선택한 계좌의 원금이 0입니다. 설정에서 원금을 입력하면 %가 연동됩니다.':'예정 매수금액을 입력하면 %가 연동됩니다.');}}
+$('cAccount').addEventListener('change',()=>onAccChange('c'));$('mAccount').addEventListener('change',()=>onAccChange('m'));
+$('cStop').addEventListener('input',()=>linkStop('c','price'));$('cStopPct').addEventListener('input',()=>linkStop('c','pct'));$('cEntry').addEventListener('input',()=>linkStop('c','entry'));
+$('cRisk').addEventListener('input',()=>linkRisk('c','amt'));$('cRiskPct').addEventListener('input',()=>linkRisk('c','pct'));$('cRiskBasis').addEventListener('change',()=>{linkRisk('c','basis');if(num('cEntry')&&num('cStop')&&num('cRisk'))calc();});$('cPosAmt').addEventListener('input',()=>{linkRisk('c','basis');if(num('cEntry')&&num('cStop')&&num('cRisk'))calc();});
+$('mStop').addEventListener('input',()=>{linkStop('m','price');modalCalc();});$('mStopPct').addEventListener('input',()=>{linkStop('m','pct');modalCalc();});$('mEntry').addEventListener('input',()=>{linkStop('m','entry');modalCalc();});
+$('mRisk').addEventListener('input',()=>{linkRisk('m','amt');modalCalc();});$('mRiskPct').addEventListener('input',()=>{linkRisk('m','pct');modalCalc();});$('mRiskBasis').addEventListener('change',()=>{linkRisk('m','basis');modalCalc();});$('mPosAmt').addEventListener('input',()=>{linkRisk('m','basis');modalCalc();});
 // ---------- cloud sync (GitHub Gist) ----------
 const SY={token:'',gistId:'',auto:true,lastSync:''};let upTimer=null,applying=false;
 function saveSync(){localStorage.setItem('riskDeskSync',JSON.stringify(SY));}
@@ -421,7 +476,7 @@ async function downloadNow(silent){if(!connected())return;try{syncStatus('다운
   const remoteNewer=!S.updatedAt||(o.updatedAt||'')>S.updatedAt;const same=o.updatedAt===S.updatedAt;
   if(same){SY.lastSync=new Date().toISOString();saveSync();syncStatus();if(!silent)toast('이미 최신 상태입니다');return;}
   if(!remoteNewer){if(silent){await uploadNow(true);return;}if(!confirm(`이 기기의 데이터(${new Date(S.updatedAt).toLocaleString('ko-KR')})가 클라우드(${o.updatedAt?new Date(o.updatedAt).toLocaleString('ko-KR'):'?'})보다 최신입니다.\n클라우드 데이터로 덮어쓸까요? (취소하면 이 기기 데이터를 업로드합니다)`)){await uploadNow();return;}}
-  applying=true;S.trades=o.trades;S.settings={...DEF_SET,...(o.settings||{})};S.updatedAt=o.updatedAt||new Date().toISOString();save(true);load();refreshStrategies();renderTrades();renderDash();applying=false;
+  applying=true;S.trades=o.trades;S.settings={...DEF_SET,...(o.settings||{})};S.updatedAt=o.updatedAt||new Date().toISOString();save(true);load();refreshStrategies();fillAccSelects();renderTrades();renderDash();applying=false;
   SY.lastSync=new Date().toISOString();saveSync();syncStatus();if(!silent)toast(`클라우드에서 ${o.trades.length}건을 불러왔습니다`);}
   catch(e){applying=false;syncStatus('다운로드 실패: '+e.message,true);if(!silent)alert('다운로드 실패: '+e.message);}}
 $('syConnect').addEventListener('click',async()=>{SY.token=$('syTok').value.trim();SY.gistId=$('syGist').value.trim();SY.auto=$('syAuto').checked;if(!SY.token)return alert('GitHub 토큰을 입력하세요.');saveSync();
@@ -442,9 +497,9 @@ document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>
 }));
 
 // ---------- calculator ----------
-['cEntry','cStop','cRisk','cActEntry','cActShares','cSlip','cMaxSL'].forEach(id=>$(id).addEventListener('input',()=>{if(num('cEntry')&&num('cStop')&&num('cRisk'))calc();}));
+['cEntry','cStop','cStopPct','cRisk','cRiskPct','cActEntry','cActShares','cSlip','cMaxSL'].forEach(id=>$(id).addEventListener('input',()=>{if(num('cEntry')&&num('cStop')&&num('cRisk'))calc();}));
 $('cCalc').addEventListener('click',calc);
-$('cReset').addEventListener('click',()=>{['cEntry','cStop','cRisk','cTicker','cStrategy','cSetup','cActEntry','cActShares','cSlip'].forEach(id=>$(id).value='');$('cMaxSL').value='8.2';
+$('cReset').addEventListener('click',()=>{['cEntry','cStop','cStopPct','cRisk','cRiskPct','cPosAmt','cTicker','cStrategy','cSetup','cActEntry','cActShares','cSlip'].forEach(id=>$(id).value='');$('cMaxSL').value='8.2';
   ['rShares','rRPS','rSLP','rTotal','rMaxEntry'].forEach(id=>$(id).textContent='-');$('rMaxEntryD').textContent='';renderTargets(null);$('rRisk').innerHTML='';$('cErr').classList.remove('show');});
 function renderTargets(c){$('rTargets').innerHTML=R_LEVELS.map(r=>`<div class="tp ${r<0?'neg':''} ${r===2?'hi':''}"><div class="l">${r>0?'+':''}${r}R</div><div class="v">${c?money(c.e+c.rps*r,false,c.cur):'-'}</div></div>`).join('');}
 function cErr(m){const e=$('cErr');e.textContent=m;e.classList.add('show');return null;}
@@ -456,7 +511,7 @@ function calc(){
   if(!stop||stop<=0)return cErr('올바른 손절가격을 입력해주세요.');
   if(stop>=entry)return cErr('롱 포지션 기준 손절가는 진입가보다 낮아야 합니다.');
   if(!risk||risk<=0)return cErr('1R은 0보다 큰 금액을 입력해주세요.');
-  const c=coreCalc(entry,stop,risk,num('cActEntry'));const cu=$('cMarket').value;c.cur=cu;
+  const c=coreCalc(entry,stop,risk,num('cActEntry'));const cu=curOf('c');c.cur=cu;
   $('rShares').textContent=c.shares.toLocaleString()+'주';
   $('rRPS').textContent=money(c.rps,false,cu);$('rSLP').textContent=pct(c.slp);$('rTotal').textContent=money(c.shares*c.e,false,cu);
   const maxSL=num('cMaxSL')||8.2;const maxEntry=stop/(1-maxSL/100);
@@ -471,15 +526,15 @@ function calc(){
   return c;
 }
 $('cSave').addEventListener('click',()=>{const c=calc();if(!c)return;
-  openModal(null,{date:today(),cur:$('cMarket').value,ticker:$('cTicker').value,strategy:$('cStrategy').value,setup:$('cSetup').value,entryPrice:num('cEntry'),actualEntry:num('cActEntry'),stopPrice:num('cStop'),riskAmount:num('cRisk'),actualShares:num('cActShares')});});
+  openModal(null,{date:today(),account:$('cAccount').value,ticker:$('cTicker').value,stopPercentIn:num('cStopPct'),riskPct:num('cRiskPct'),riskBasis:$('cRiskBasis').value,posAmount:num('cPosAmt'),strategy:$('cStrategy').value,setup:$('cSetup').value,entryPrice:num('cEntry'),actualEntry:num('cActEntry'),stopPrice:num('cStop'),riskAmount:num('cRisk'),actualShares:num('cActShares')});});
 
 // ---------- modal ----------
 function openModal(id,pre){
   S.editId=id;S.img=null;const t=id?S.trades.find(x=>x.id===id):(pre||{});
   $('mTitle').textContent=id?'거래 수정':'거래 저장';
-  $('mDate').value=t.date||today();$('mCur').value=t.cur||$('cMarket').value||'USD';setUnits('#tModal',$('mCur').value);$('mTicker').value=t.ticker||'';$('mStrategy').value=t.strategy||'';$('mSetup').value=t.setup||'';$('mSetupN').textContent=$('mSetup').value.length;
+  $('mDate').value=t.date||today();$('mAccount').innerHTML=accOptions();$('mAccount').value=acc(t.account)?t.account:($('cAccount').value||accs()[0].id);$('mRiskBasis').value=t.riskBasis||'acct';$('mPosAmt').value=t.posAmount??'';$('mRiskPct').value=t.riskPct??'';$('mStopPct').value='';$('mTicker').value=t.ticker||'';$('mStrategy').value=t.strategy||'';$('mSetup').value=t.setup||'';$('mSetupN').textContent=$('mSetup').value.length;
   $('mRisk').value=t.riskAmount??'';$('mEntry').value=t.entryPrice??'';$('mActEntry').value=t.actualEntry??'';$('mStop').value=t.stopPrice??'';$('mShares').value=t.actualShares??'';
-  $('mStatus').value=t.status||'open';$('mCloseDate').value=t.closeDate||'';$('mPnl').value=t.pnl??'';$('mMemo').value=t.memo||'';$('mMemoN').textContent=($('mMemo').value).length;
+  $('mStatus').value=t.status||'open';setUnits('#tModal',curOf('m'));linkStop('m','price');riskBasis('m');lastRisk.m=t.riskPct==null?'amt':'pct';linkRisk('m','basis');$('mCloseDate').value=t.closeDate||'';$('mPnl').value=t.pnl??'';$('mMemo').value=t.memo||'';$('mMemoN').textContent=($('mMemo').value).length;
   $('mImg').value='';S.img=t.image||null;showImgPrev();
   modalCalc();statusToggle();$('tModal').classList.add('active');
 }
@@ -489,7 +544,7 @@ $('mClose').addEventListener('click',closeModal);$('tModal').addEventListener('c
 $('mStatus').addEventListener('change',statusToggle);$('mMemo').addEventListener('input',()=>$('mMemoN').textContent=$('mMemo').value.length);$('mSetup').addEventListener('input',()=>$('mSetupN').textContent=$('mSetup').value.length);
 function statusToggle(){const closed=$('mStatus').value==='closed';$('mCloseWrap').classList.toggle('hidden',!closed);$('mPnlWrap').classList.toggle('hidden',!closed);if(closed&&!$('mCloseDate').value)$('mCloseDate').value=today();}
 function modalCalc(){const e=num('mEntry'),s=num('mStop'),r=num('mRisk');const p=num('mPnl');
-  if(e&&s&&r&&s<e){const c=coreCalc(e,s,r,num('mActEntry'));$('mCalc').innerHTML=`적정 수량 <b>${c.shares}주</b> · 손절률 <b>${c.slp.toFixed(2)}%</b> · 주당 위험 <b>${money(c.rps,false,$('mCur').value)}</b>`;}
+  if(e&&s&&r&&s<e){const c=coreCalc(e,s,r,num('mActEntry'));$('mCalc').innerHTML=`적정 수량 <b>${c.shares}주</b> · 손절률 <b>${c.slp.toFixed(2)}%</b> · 주당 위험 <b>${money(c.rps,false,curOf('m'))}</b>`;}
   else $('mCalc').innerHTML='적정 수량 <b>-</b> · 손절률 <b>-</b>';
   $('mRHint').textContent='R 배수: '+(p!=null&&r?(p/r).toFixed(2)+'R':'-');}
 $('mImg').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=ev=>{const im=new Image();im.onload=()=>{const M=900;let w=im.width,h=im.height;if(w>M){h=h*M/w;w=M;}const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(im,0,0,w,h);S.img=cv.toDataURL('image/jpeg',.72);showImgPrev();};im.src=ev.target.result;};rd.readAsDataURL(f);});
@@ -499,7 +554,7 @@ $('mSave').addEventListener('click',()=>{
   if(!e||e<=0||!s||s<=0||!r||r<=0)return alert('진입가, 손절가, 1R을 모두 입력해주세요.');
   if(s>=e)return alert('손절가는 진입가보다 낮아야 합니다.');
   const c=coreCalc(e,s,r,num('mActEntry'));const status=$('mStatus').value;const shares=num('mShares');
-  const t={id:S.editId||Date.now(),date:$('mDate').value||today(),cur:$('mCur').value,ticker:($('mTicker').value||'N/A').toUpperCase().trim(),strategy:$('mStrategy').value.trim()||'미분류',setup:$('mSetup').value.trim(),
+  const t={id:S.editId||Date.now(),date:$('mDate').value||today(),account:$('mAccount').value,cur:curOf('m'),riskPct:num('mRiskPct'),riskBasis:$('mRiskBasis').value,posAmount:num('mPosAmt'),ticker:($('mTicker').value||'N/A').toUpperCase().trim(),strategy:$('mStrategy').value.trim()||'미분류',setup:$('mSetup').value.trim(),
     entryPrice:e,actualEntry:num('mActEntry'),stopPrice:s,riskAmount:r,riskPerShare:c.rps,stopPercent:c.slp,recommendedShares:c.shares,actualShares:shares,
     compliant:shares==null?null:shares<=c.shares,status,closeDate:status==='closed'?($('mCloseDate').value||today()):null,
     pnl:status==='closed'?(num('mPnl')||0):null,memo:$('mMemo').value,image:S.img};
@@ -512,19 +567,19 @@ $('mSave').addEventListener('click',()=>{
 function refreshStrategies(){const set=[...new Set(S.trades.map(t=>t.strategy).filter(Boolean))].sort();
   $('stratList').innerHTML=set.map(s=>`<option value="${esc(s)}">`).join('');
   const cur=$('fStrategy').value;$('fStrategy').innerHTML='<option value="">전략 전체</option>'+set.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');$('fStrategy').value=cur;}
-['fSearch','fMarket','fStrategy','fStatus','fFrom','fTo'].forEach(id=>$(id).addEventListener('input',renderTrades));
-$('fClear').addEventListener('click',()=>{['fSearch','fMarket','fStrategy','fStatus','fFrom','fTo'].forEach(id=>$(id).value='');renderTrades();});
-function filtered(){const q=$('fSearch').value.toLowerCase(),mk=$('fMarket').value,st=$('fStrategy').value,ss=$('fStatus').value,f=$('fFrom').value,to=$('fTo').value;
-  return S.trades.filter(t=>{if(q&&!(t.ticker.toLowerCase().includes(q)||(t.memo||'').toLowerCase().includes(q)||(t.setup||'').toLowerCase().includes(q)))return false;if(mk&&t.cur!==mk)return false;if(st&&t.strategy!==st)return false;
+['fSearch','fAccount','fStrategy','fStatus','fFrom','fTo'].forEach(id=>$(id).addEventListener('input',renderTrades));
+$('fClear').addEventListener('click',()=>{['fSearch','fAccount','fStrategy','fStatus','fFrom','fTo'].forEach(id=>$(id).value='');renderTrades();});
+function filtered(){const q=$('fSearch').value.toLowerCase(),mk=$('fAccount').value,st=$('fStrategy').value,ss=$('fStatus').value,f=$('fFrom').value,to=$('fTo').value;
+  return S.trades.filter(t=>{if(q&&!(t.ticker.toLowerCase().includes(q)||(t.memo||'').toLowerCase().includes(q)||(t.setup||'').toLowerCase().includes(q)))return false;if(mk&&t.account!==mk)return false;if(st&&t.strategy!==st)return false;
     if(ss==='open'&&t.status!=='open')return false;if(ss==='win'&&!(t.status==='closed'&&t.pnl>0))return false;if(ss==='loss'&&!(t.status==='closed'&&t.pnl<0))return false;
     if(f&&t.date<f)return false;if(to&&t.date>to)return false;return true;}).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
 function renderTrades(){const list=filtered();$('tCount').textContent=`${list.length} / ${S.trades.length}건`;
   if(!list.length){$('tList').innerHTML='<div class="empty">표시할 거래가 없습니다. 계산기에서 거래를 저장하거나 새 거래를 추가하세요.</div>';return;}
   $('tList').innerHTML=list.map(t=>{const cls=t.status==='open'?'open':(t.pnl>=0?'win':'loss');const txt=t.status==='open'?'미결':(t.pnl>=0?'승':'패');
-    return `<div class="ti"><div class="th"><div><span class="tk">${esc(t.ticker)}</span><span class="tag" style="background:rgba(148,163,184,.18);color:#cbd5e1">${t.cur==='KRW'?'🇰🇷 KRW':'🇺🇸 USD'}</span><span class="tag strat">${esc(t.strategy)}</span><span class="tag ${cls}">${txt}</span>${t.compliant===null?'':`<span class="tag ${t.compliant?'ok':'viol'}">${t.compliant?'규칙 준수':'리스크 초과'}</span>`}</div>
+    return `<div class="ti"><div class="th"><div><span class="tk">${esc(t.ticker)}</span><span class="tag" style="background:rgba(148,163,184,.18);color:#cbd5e1">${esc(accName(t.account))} ${CUR[t.cur].s}</span><span class="tag strat">${esc(t.strategy)}</span><span class="tag ${cls}">${txt}</span>${t.compliant===null?'':`<span class="tag ${t.compliant?'ok':'viol'}">${t.compliant?'규칙 준수':'리스크 초과'}</span>`}</div>
       <span style="color:var(--mute);font-size:.82rem">${t.date}${t.closeDate?' → '+t.closeDate:''}</span></div>
       <div class="td"><div><span class="l">진입가</span><span class="v">${money(t.actualEntry||t.entryPrice,false,t.cur)}</span></div><div><span class="l">손절가</span><span class="v">${money(t.stopPrice,false,t.cur)}</span></div>
-      <div><span class="l">손절률</span><span class="v">${t.stopPercent.toFixed(2)}%</span></div><div><span class="l">1R</span><span class="v">${money(t.riskAmount,false,t.cur)}</span></div>
+      <div><span class="l">손절률</span><span class="v">${t.stopPercent.toFixed(2)}%</span></div><div><span class="l">1R${t.riskPct!=null?` · ${t.riskPct}% ${t.riskBasis==='pos'?'매수금액':'원금'}`:''}</span><span class="v">${money(t.riskAmount,false,t.cur)}</span></div>
       <div><span class="l">적정수량</span><span class="v">${t.recommendedShares}주</span></div><div><span class="l">실제수량</span><span class="v">${t.actualShares??'-'}${t.actualShares!=null?'주':''}</span></div>
       ${t.status==='closed'?`<div><span class="l">손익</span><span class="v ${t.pnl>=0?'pos':'neg'}">${money(t.pnl,true,t.cur)}</span></div><div><span class="l">R 배수</span><span class="v ${t.rMultiple>=0?'pos':'neg'}">${t.rMultiple.toFixed(2)}R</span></div>`:''}</div>
       ${t.setup?`<div class="memo" style="border-top:none;padding-top:0"><span style="color:var(--blue);font-weight:600">근거</span> ${esc(t.setup)}</div>`:''}${t.memo?`<div class="memo"><span style="color:var(--mute);font-weight:600">복기</span> ${esc(t.memo)}</div>`:''}${t.image?`<img src="${t.image}" class="thumb" onclick="showLb(${t.id})">`:''}
@@ -534,8 +589,8 @@ function delTrade(id){if(confirm('이 거래를 삭제할까요?')){S.trades=S.t
 $('tAdd').addEventListener('click',()=>openModal(null));
 $('tClear').addEventListener('click',()=>{if(confirm('모든 거래를 삭제할까요? 되돌릴 수 없습니다.')){S.trades=[];save();refreshStrategies();renderTrades();renderDash();}});
 $('tCSV').addEventListener('click',()=>{if(!S.trades.length)return alert('내보낼 거래가 없습니다.');
-  const h=['진입일','청산일','시장','티커','전략','예상진입가','실제체결가','손절가','손절률%','1R','적정수량','실제수량','규칙준수','상태','손익','R배수','매매근거','메모'];
-  const rows=S.trades.map(t=>[t.date,t.closeDate||'',t.cur,t.ticker,t.strategy,t.entryPrice,t.actualEntry??'',t.stopPrice,t.stopPercent.toFixed(2),t.riskAmount,t.recommendedShares,t.actualShares??'',t.compliant===null?'':(t.compliant?'O':'X'),t.status,t.pnl??'',t.rMultiple==null?'':t.rMultiple.toFixed(2),'"'+(t.setup||'').replace(/"/g,'""')+'"','"'+(t.memo||'').replace(/"/g,'""')+'"']);
+  const h=['진입일','청산일','계좌','통화','티커','전략','예상진입가','실제체결가','손절가','손절률%','1R','1R%','1R%기준','적정수량','실제수량','규칙준수','상태','손익','R배수','매매근거','메모'];
+  const rows=S.trades.map(t=>[t.date,t.closeDate||'',accName(t.account),t.cur,t.ticker,t.strategy,t.entryPrice,t.actualEntry??'',t.stopPrice,t.stopPercent.toFixed(2),t.riskAmount,t.riskPct??'',t.riskBasis==='pos'?'매수금액':'원금',t.recommendedShares,t.actualShares??'',t.compliant===null?'':(t.compliant?'O':'X'),t.status,t.pnl??'',t.rMultiple==null?'':t.rMultiple.toFixed(2),'"'+(t.setup||'').replace(/"/g,'""')+'"','"'+(t.memo||'').replace(/"/g,'""')+'"']);
   const csv='\ufeff'+[h,...rows].map(r=>r.join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download=`trades-${today()}.csv`;a.click();});
 
 // ---------- stats ----------
@@ -560,7 +615,7 @@ function computeStats(trades){
     rr:avgL>0?avgW/avgL:null,pf:gL>0?gW/gL:null,exp:closed.length?tot/closed.length:null,avgR:rs.length?rs.reduce((a,b)=>a+b,0)/rs.length:null,
     mw,ml,curStreak,mddPct,mddAbs,curve,bal,init,cagr,calmar,days,best:wins.length?Math.max(...wins.map(pb)):null,worst:losses.length?Math.min(...losses.map(pb)):null};
 }
-const SK={ticker:'ticker',strategy:'strategy',market:'cur'};
+const SK={ticker:'ticker',strategy:'strategy',market:'cur',account:'account'};
 function scoped(){if(S.scopeType==='all'||!S.scopeValue)return S.trades;return S.trades.filter(t=>t[SK[S.scopeType]]===S.scopeValue);}
 
 // ---------- dashboard ----------
@@ -568,7 +623,7 @@ $('scopeType').addEventListener('change',()=>{S.scopeType=$('scopeType').value;f
 $('scopeValue').addEventListener('change',()=>{S.scopeValue=$('scopeValue').value;renderDash();});
 function fillScope(){const sv=$('scopeValue');if(S.scopeType==='all'){sv.classList.add('hidden');S.scopeValue='';return;}
   const k=SK[S.scopeType];const set=[...new Set(S.trades.map(t=>t[k]).filter(Boolean))].sort();
-  sv.innerHTML=set.map(v=>`<option value="${esc(v)}">${k==='cur'?MKT[v]:esc(v)}</option>`).join('');sv.classList.remove('hidden');
+  sv.innerHTML=set.map(v=>`<option value="${esc(v)}">${k==='cur'?MKT[v]:k==='account'?esc(accName(v)):esc(v)}</option>`).join('');sv.classList.remove('hidden');
   if(!set.includes(S.scopeValue))S.scopeValue=set[0]||'';sv.value=S.scopeValue;}
 document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.seg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');S.period=b.dataset.p;renderPeriod(computeStats(scoped()).closed);}));
 function setScope(type,val){S.scopeType=type;$('scopeType').value=type;fillScope();S.scopeValue=val;$('scopeValue').value=val;renderDash();window.scrollTo({top:0,behavior:'smooth'});}
@@ -584,8 +639,8 @@ function renderGuards(){const st=computeStats(S.trades);let h='';const set=S.set
 function renderDash(){
   fillScope();renderGuards();
   const tr=scoped();const st=computeStats(tr);
-  $('scopeInfo').textContent=(S.scopeType==='all'?'전체':(S.scopeType==='market'?MKT[S.scopeValue]:S.scopeValue))+` · ${st.total}건 (완료 ${st.closed.length}) · ${S.settings.baseCur} 기준`;
-  $('fxInfo').textContent=`합산 환율 ₩${(S.settings.fxRate||0).toLocaleString('en-US',{maximumFractionDigits:2})}/$`+(S.settings.fxDate?` · ${S.settings.fxDate} 갱신`:' · 수동값')+(S.settings.initialUSD||S.settings.initialKRW?` · 원금 $${(S.settings.initialUSD||0).toLocaleString()} + ₩${(S.settings.initialKRW||0).toLocaleString()}`:'');
+  $('scopeInfo').textContent=(S.scopeType==='all'?'전체':(S.scopeType==='market'?MKT[S.scopeValue]:S.scopeType==='account'?accName(S.scopeValue):S.scopeValue))+` · ${st.total}건 (완료 ${st.closed.length}) · ${S.settings.baseCur} 기준`;
+  $('fxInfo').textContent=`합산 환율 ₩${(S.settings.fxRate||0).toLocaleString('en-US',{maximumFractionDigits:2})}/$`+(S.settings.fxDate?` · ${S.settings.fxDate} 갱신`:' · 수동값')+(accs().length?` · 원금 합산 ${money(initBase())}`:'');renderAccStatus();
   $('dInit').textContent=st.init>0?money(st.init):'-';$('dBal').textContent=st.init>0?money(st.bal):money(st.tot,true);
   $('dPnl').textContent=money(st.tot,true);$('dPnl').className='v '+(st.tot>0?'pos':st.tot<0?'neg':'');
   const ret=st.init>0?st.tot/st.init*100:null;$('dRet').textContent=pct(ret,true);$('dRet').className='v '+(ret>0?'pos':ret<0?'neg':'');
@@ -636,17 +691,24 @@ function renderBreakdown(el,key,trades){const g={};trades.forEach(t=>{(g[t[key]]
   const rows=keys.map(k=>({k,st:computeStats(g[k])})).sort((a,b)=>b.st.tot-a.st.tot);
   $(el).innerHTML=`<table><tr><th>${key==='ticker'?'종목':'전략'}</th><th>거래</th><th>승률</th><th>손익</th><th>평균R</th><th>PF</th><th>MDD</th></tr>`+rows.map(({k,st})=>`<tr class="click" onclick="setScope('${key}','${esc(k).replace(/'/g,"\\'")}')"><td><b>${esc(k)}</b></td><td>${st.closed.length}/${st.total}</td><td>${st.closed.length?(st.wr*100).toFixed(0)+'%':'-'}</td><td class="${st.tot>0?'pos':st.tot<0?'neg':''}">${money(st.tot,true)}</td><td>${st.avgR!=null?st.avgR.toFixed(2):'-'}</td><td>${st.pf!=null?st.pf.toFixed(2):(st.gW>0?'∞':'-')}</td><td>${st.init>0?'-'+st.mddPct.toFixed(1)+'%':money(-st.mddAbs)}</td></tr>`).join('')+'</table><div class="hint" style="margin-top:6px">행을 누르면 해당 범위로 대시보드가 전환됩니다.</div>';}
 
+function renderAccStatus(){const rows=accs().map(a=>{const tr=S.trades.filter(t=>t.account===a.id);const cl=tr.filter(t=>t.status==='closed');const pnl=cl.reduce((s,t)=>s+t.pnl,0);const bal=(a.initial||0)+pnl;const ret=a.initial>0?pnl/a.initial*100:null;
+    return `<tr class="click" onclick="setScope('account','${a.id}')"><td><b>${esc(a.name)}</b></td><td>${a.cur}</td><td>${money(a.initial||0,false,a.cur)}</td><td class="${pnl>0?'pos':pnl<0?'neg':''}">${money(pnl,true,a.cur)}</td><td><b>${money(bal,false,a.cur)}</b></td><td class="${ret>0?'pos':ret<0?'neg':''}">${pct(ret,true)}</td><td>${cl.length}/${tr.length}</td><td>${money(toBase(bal,a.cur))}</td></tr>`;}).join('');
+  $('accStatus').innerHTML=accs().length?`<table><tr><th>계좌</th><th>통화</th><th>원금</th><th>실현손익</th><th>잔고</th><th>수익률</th><th>완료/전체</th><th>${S.settings.baseCur} 환산 잔고</th></tr>${rows}</table>`:'<div class="empty">설정에서 계좌를 등록하세요.</div>';}
+function renderAccEditor(){$('accTbl').innerHTML='<tr><th>계좌 이름</th><th>통화</th><th>원금</th><th></th></tr>'+accs().map((a,i)=>`<tr data-id="${a.id}"><td><input type="text" class="accName" value="${esc(a.name)}" placeholder="예: 키움 국내" style="min-width:140px"></td><td><select class="accCur" style="width:auto"><option value="USD" ${a.cur==='USD'?'selected':''}>USD ($)</option><option value="KRW" ${a.cur==='KRW'?'selected':''}>KRW (₩)</option></select></td><td><input type="number" class="accInit" value="${a.initial||''}" step="0.01" style="min-width:140px"></td><td><button class="bdl bsm" onclick="accDel('${a.id}')">삭제</button></td></tr>`).join('');}
+function readAccEditor(){return [...document.querySelectorAll('#accTbl tr[data-id]')].map(r=>({id:r.dataset.id,name:r.querySelector('.accName').value.trim()||'계좌',cur:r.querySelector('.accCur').value,initial:parseFloat(r.querySelector('.accInit').value)||0}));}
+$('accAdd').addEventListener('click',()=>{S.settings.accounts=readAccEditor();S.settings.accounts.push({id:'a_'+Date.now(),name:'새 계좌',cur:'USD',initial:0});renderAccEditor();});
+function accDel(id){const nT=S.trades.filter(t=>t.account===id).length;if(!confirm(nT?`이 계좌에 거래 ${nT}건이 연결되어 있습니다. 삭제하면 해당 거래는 "삭제된 계좌"로 표시됩니다. 삭제할까요?`:'이 계좌를 삭제할까요?'))return;S.settings.accounts=readAccEditor().filter(a=>a.id!==id);renderAccEditor();}
 // ---------- settings ----------
-$('sSave').addEventListener('click',()=>{S.settings={...S.settings,initialUSD:num('sInitUSD')||0,initialKRW:num('sInitKRW')||0,baseCur:$('sCur').value,fxRate:num('sFx')||S.settings.fxRate||1380,fxDate:(num('sFx')&&num('sFx')!==S.settings.fxRate)?'':S.settings.fxDate,startDate:$('sStart').value,monthlyTarget:num('sTarget')||0,dailyLossLimit:num('sDaily')||0,maxLossStreak:parseInt($('sStreak').value)||0};fxLabel();save();renderDash();toast('설정이 저장되었습니다');});
+$('sSave').addEventListener('click',()=>{S.settings={...S.settings,accounts:readAccEditor(),baseCur:$('sCur').value,fxRate:num('sFx')||S.settings.fxRate||1380,fxDate:(num('sFx')&&num('sFx')!==S.settings.fxRate)?'':S.settings.fxDate,startDate:$('sStart').value,monthlyTarget:num('sTarget')||0,dailyLossLimit:num('sDaily')||0,maxLossStreak:parseInt($('sStreak').value)||0};if(!accs().length)S.settings.accounts=[{id:'a_'+Date.now(),name:'기본 계좌',cur:'USD',initial:0}];fxLabel();renderAccEditor();fillAccSelects();save();renderDash();toast('설정이 저장되었습니다');});
 $('sBackup').addEventListener('click',()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({trades:S.trades,settings:S.settings},null,1)],{type:'application/json'}));a.download=`risk-desk-backup-${today()}.json`;a.click();});
 $('sRestore').addEventListener('click',()=>$('sFile').click());
 $('sFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const o=JSON.parse(ev.target.result);if(!Array.isArray(o.trades))throw 0;
   if(S.trades.length&&!confirm(`현재 ${S.trades.length}건에 백업 ${o.trades.length}건을 합칠까요? (취소하면 덮어씁니다)`))S.trades=o.trades;else{const ids=new Set(S.trades.map(t=>t.id));S.trades=[...S.trades,...o.trades.filter(t=>!ids.has(t.id))];}
-  if(o.settings)S.settings={...DEF_SET,...o.settings};save();load();refreshStrategies();renderTrades();renderDash();toast('복구되었습니다');}catch(x){alert('백업 파일을 읽을 수 없습니다.');}e.target.value='';};r.readAsText(f);});
-$('sWipe').addEventListener('click',()=>{if(confirm('모든 거래와 설정을 삭제할까요? 되돌릴 수 없습니다.')&&confirm('정말 삭제합니다. 백업은 하셨나요?')){S.trades=[];S.settings={...DEF_SET};save();load();refreshStrategies();renderTrades();renderDash();}});
+  if(o.settings)S.settings={...DEF_SET,...o.settings};save();load();refreshStrategies();fillAccSelects();renderTrades();renderDash();toast('복구되었습니다');}catch(x){alert('백업 파일을 읽을 수 없습니다.');}e.target.value='';};r.readAsText(f);});
+$('sWipe').addEventListener('click',()=>{if(confirm('모든 거래와 설정을 삭제할까요? 되돌릴 수 없습니다.')&&confirm('정말 삭제합니다. 백업은 하셨나요?')){S.trades=[];S.settings={...DEF_SET};save();load();refreshStrategies();fillAccSelects();renderTrades();renderDash();}});
 
 // ---------- init ----------
-load();loadSync();refreshStrategies();setUnits('#calculator','USD');renderTargets(null);renderDash();fetchFx(false);if(connected()&&SY.auto!==false)downloadNow(true);
+load();loadSync();refreshStrategies();fillAccSelects();renderTargets(null);renderDash();fetchFx(false);if(connected()&&SY.auto!==false)downloadNow(true);
 window.addEventListener('resize',()=>{if($('dashboard').classList.contains('active'))renderChart(computeStats(scoped()).curve,initBase());});
 </script>
 </body>
